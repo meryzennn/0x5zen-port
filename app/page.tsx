@@ -213,13 +213,16 @@ const projects = [
   },
 ];
 
-const aliases = ["Tegar Hardiansyah", "Ryzen", "0x5zen", "Zen"];
+const aliases = ["Tegar Hardiansyah", "Ryzen", "0x5zen", "Zen", "meryzennn"];
 
 export default function Home() {
   const [textIndex, setTextIndex] = useState(0);
   const [showAllProjects, setShowAllProjects] = useState(false);
   const [showCV, setShowCV] = useState(false);
   const [showAllCerts, setShowAllCerts] = useState(false);
+
+  // State buat simpen Lenis instance biar bisa di stop/start
+  const [lenisInstance, setLenisInstance] = useState<Lenis | null>(null);
 
   const { scrollYProgress } = useScroll();
   const scaleX = useSpring(scrollYProgress, {
@@ -229,7 +232,6 @@ export default function Home() {
   });
 
   useEffect(() => {
-    // Setup Lenis Scroll
     const lenis = new Lenis({
       duration: 1.2,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
@@ -237,6 +239,9 @@ export default function Home() {
       smoothWheel: true,
       wheelMultiplier: 1,
     });
+
+    // Simpen instance ke state
+    setLenisInstance(lenis);
 
     function raf(time: number) {
       lenis.raf(time);
@@ -265,12 +270,23 @@ export default function Home() {
     };
   }, []);
 
+  // --- LOGIC SCROLL LOCK (RAHASIA BIAR BACKGROUND GAK GERAK) ---
+  useEffect(() => {
+    if (lenisInstance) {
+      if (showCV) {
+        lenisInstance.stop(); // Matikan smooth scroll
+        document.body.style.overflow = "hidden"; // Kunci scroll browser native
+      } else {
+        lenisInstance.start(); // Nyalakan lagi
+        document.body.style.overflow = ""; // Lepas kunci
+      }
+    }
+  }, [showCV, lenisInstance]);
+
   const visibleProjects = showAllProjects ? projects : projects.slice(0, 4);
   const visibleCerts = showAllCerts
     ? certifications
     : certifications.slice(0, 3);
-
-  // --- NO LOADING SCREEN (LANGSUNG RETURN UTAMA) ---
 
   return (
     <main className="min-h-screen relative overflow-hidden font-outfit selection:bg-cyan-500 selection:text-black">
@@ -712,11 +728,11 @@ export default function Home() {
           </div>
         </div>
         <div className="border-t border-white/5 py-8 text-center text-slate-600 text-sm font-mono">
-          <p>&copy; 2026 Tegar Hardiansyah (Ryzen). All rights reserved.</p>
+          <p>&copy;2026 0x5zen. All rights reserved.</p>
         </div>
       </footer>
 
-      {/* --- LIVE CV MODAL (VIEW ONLY & FIX SCROLL) --- */}
+      {/* --- LIVE CV MODAL (FIXED SCROLL & VIEW ONLY) --- */}
       <AnimatePresence>
         {showCV && (
           <motion.div
@@ -724,12 +740,12 @@ export default function Home() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-100 flex items-center justify-center bg-black/80 backdrop-blur-md p-4"
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-md p-4"
             onClick={(e) => {
               if (e.target === e.currentTarget) setShowCV(false);
             }}
           >
-            {/* data-lenis-prevent PENTING biar scroll di dalem modal jalan & gak nge-scroll body */}
+            {/* data-lenis-prevent IS A MUST HERE */}
             <motion.div
               data-lenis-prevent
               initial={{ scale: 0.95, opacity: 0, y: 20 }}
@@ -745,10 +761,10 @@ export default function Home() {
                   <FaTimes />
                 </button>
 
-                {/* PROFILE PICTURE - Ganti src-nya sesuai file lu */}
+                {/* PROFILE PICTURE - Pastikan file 'profile.jpg' ada di folder public */}
                 <img
                   src="/profile.jpg"
-                  alt="Profile"
+                  alt="Tegar Hardiansyah"
                   className="w-24 h-24 rounded-full object-cover border-2 border-white/10 shadow-lg shadow-purple-500/30 shrink-0"
                 />
 
