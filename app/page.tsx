@@ -34,6 +34,7 @@ import {
   SiAlibabacloud,
   SiGooglecloud,
   SiCisco,
+  SiGit,
 } from "react-icons/si";
 import {
   FaLaptopCode,
@@ -216,12 +217,16 @@ const projects = [
 const aliases = ["Tegar Hardiansyah", "Ryzen", "0x5zen", "Zen", "meryzennn"];
 
 export default function Home() {
-  const [textIndex, setTextIndex] = useState(0);
   const [showAllProjects, setShowAllProjects] = useState(false);
   const [showCV, setShowCV] = useState(false);
   const [showAllCerts, setShowAllCerts] = useState(false);
 
-  // State buat simpen Lenis instance biar bisa di stop/start
+  // STATE TYPEWRITER
+  const [displayText, setDisplayText] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [loopNum, setLoopNum] = useState(0);
+  const [typingSpeed, setTypingSpeed] = useState(150);
+
   const [lenisInstance, setLenisInstance] = useState<Lenis | null>(null);
 
   const { scrollYProgress } = useScroll();
@@ -231,6 +236,32 @@ export default function Home() {
     restDelta: 0.001,
   });
 
+  // --- TYPEWRITER LOGIC ---
+  useEffect(() => {
+    const handleType = () => {
+      const i = loopNum % aliases.length;
+      const fullText = aliases[i];
+
+      setDisplayText(
+        isDeleting
+          ? fullText.substring(0, displayText.length - 1)
+          : fullText.substring(0, displayText.length + 1)
+      );
+
+      setTypingSpeed(isDeleting ? 50 : 150);
+
+      if (!isDeleting && displayText === fullText) {
+        setTimeout(() => setIsDeleting(true), 2000);
+      } else if (isDeleting && displayText === "") {
+        setIsDeleting(false);
+        setLoopNum(loopNum + 1);
+      }
+    };
+
+    const timer = setTimeout(handleType, typingSpeed);
+    return () => clearTimeout(timer);
+  }, [displayText, isDeleting, loopNum, typingSpeed]);
+
   useEffect(() => {
     const lenis = new Lenis({
       duration: 1.2,
@@ -239,8 +270,6 @@ export default function Home() {
       smoothWheel: true,
       wheelMultiplier: 1,
     });
-
-    // Simpen instance ke state
     setLenisInstance(lenis);
 
     function raf(time: number) {
@@ -260,25 +289,19 @@ export default function Home() {
       });
     });
 
-    const interval = setInterval(() => {
-      setTextIndex((prev) => (prev + 1) % aliases.length);
-    }, 2500);
-
     return () => {
-      clearInterval(interval);
       lenis.destroy();
     };
   }, []);
 
-  // --- LOGIC SCROLL LOCK (RAHASIA BIAR BACKGROUND GAK GERAK) ---
   useEffect(() => {
     if (lenisInstance) {
       if (showCV) {
-        lenisInstance.stop(); // Matikan smooth scroll
-        document.body.style.overflow = "hidden"; // Kunci scroll browser native
+        lenisInstance.stop();
+        document.body.style.overflow = "hidden";
       } else {
-        lenisInstance.start(); // Nyalakan lagi
-        document.body.style.overflow = ""; // Lepas kunci
+        lenisInstance.start();
+        document.body.style.overflow = "";
       }
     }
   }, [showCV, lenisInstance]);
@@ -298,8 +321,8 @@ export default function Home() {
 
       {/* Background Ambience */}
       <div className="fixed inset-0 -z-10 pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-600/20 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute bottom-[10%] right-[-10%] w-[500px] h-[500px] bg-blue-600/20 rounded-full blur-[120px] animate-pulse" />
+        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-600/20 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[10%] right-[-10%] w-[500px] h-[500px] bg-blue-600/20 rounded-full blur-[120px]" />
       </div>
 
       {/* Navbar */}
@@ -363,7 +386,7 @@ export default function Home() {
           <h1 className="text-6xl md:text-8xl font-bold font-space leading-tight mb-6">
             Hi, I'm <br />
             <span className="text-transparent bg-clip-text bg-linear-to-r from-purple-500 via-blue-500 to-cyan-500">
-              {aliases[textIndex]}
+              {displayText}
             </span>
             <span className="animate-pulse text-white">|</span>
           </h1>
@@ -732,7 +755,7 @@ export default function Home() {
         </div>
       </footer>
 
-      {/* --- LIVE CV MODAL (FIXED SCROLL & VIEW ONLY) --- */}
+      {/* --- LIVE CV MODAL --- */}
       <AnimatePresence>
         {showCV && (
           <motion.div
@@ -745,7 +768,6 @@ export default function Home() {
               if (e.target === e.currentTarget) setShowCV(false);
             }}
           >
-            {/* data-lenis-prevent IS A MUST HERE */}
             <motion.div
               data-lenis-prevent
               initial={{ scale: 0.95, opacity: 0, y: 20 }}
@@ -761,21 +783,20 @@ export default function Home() {
                   <FaTimes />
                 </button>
 
-                {/* PROFILE PICTURE - Pastikan file 'profile.jpg' ada di folder public */}
                 <img
                   src="/profile.jpg"
-                  alt="Tegar Hardiansyah"
-                  className="w-24 h-24 rounded-full object-cover border-2 border-white/10 shadow-lg shadow-purple-500/30 shrink-0"
+                  alt="Tegar Hardiansyah Prasetyo"
+                  className="w-24 h-24 rounded-full object-cover border-4 border-slate-800 shadow-xl shrink-0"
                 />
 
                 <div className="text-center md:text-left w-full">
-                  <h2 className="text-3xl font-bold font-space">
-                    Tegar Hardiansyah
+                  <h2 className="text-3xl font-extrabold font-space text-white">
+                    Tegar Hardiansyah Prasetyo
                   </h2>
-                  <p className="text-cyan-400 font-mono mb-2">
+                  <p className="text-cyan-400 font-mono mb-2 font-bold">
                     Full-Stack Web Developer | 3D Artist
                   </p>
-                  <div className="flex flex-wrap gap-4 text-sm text-slate-400 justify-center md:justify-start">
+                  <div className="flex flex-wrap gap-4 text-sm text-slate-300 justify-center md:justify-start font-medium">
                     <span className="flex items-center gap-2">
                       <FaMapMarkerAlt /> Bogor, Indonesia
                     </span>
@@ -856,9 +877,7 @@ export default function Home() {
                     </p>
                     <ul className="list-disc list-inside text-sm text-slate-400 space-y-1">
                       <li>Built "ZenPnL" finance dashboard using Next.js.</li>
-                      <li>
-                        Created NFT collections on Solana ecosystem (DRiP).
-                      </li>
+                      <li>Created NFT collections on Solana ecosystem.</li>
                     </ul>
                   </div>
                 </motion.div>
