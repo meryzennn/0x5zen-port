@@ -7,8 +7,10 @@ import {
   useSpring,
   Variants,
 } from "framer-motion";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Lenis from "lenis";
+import SocialXMenu from "../components/SocialXMenu";
+
 import {
   SiNextdotjs,
   SiReact,
@@ -24,17 +26,13 @@ import {
   SiMysql,
   SiRust,
   SiFigma,
-  SiGodotengine,
   SiLinux,
-  SiInstagram,
-  SiX,
   SiDiscord,
-  SiLinkedin,
+  SiInstagram,
   SiDocker,
   SiAlibabacloud,
   SiGooglecloud,
   SiCisco,
-  SiGit,
 } from "react-icons/si";
 import {
   FaLaptopCode,
@@ -216,6 +214,8 @@ const projects = [
 
 const aliases = ["Tegar Hardiansyah", "Ryzen", "0x5zen", "Zen", "meryzennn"];
 
+const NAV_OFFSET = 88;
+
 export default function Home() {
   const [showAllProjects, setShowAllProjects] = useState(false);
   const [showCV, setShowCV] = useState(false);
@@ -227,7 +227,7 @@ export default function Home() {
   const [loopNum, setLoopNum] = useState(0);
   const [typingSpeed, setTypingSpeed] = useState(150);
 
-  const [lenisInstance, setLenisInstance] = useState<Lenis | null>(null);
+  const lenisRef = useRef<Lenis | null>(null);
 
   const { scrollYProgress } = useScroll();
   const scaleX = useSpring(scrollYProgress, {
@@ -235,6 +235,38 @@ export default function Home() {
     damping: 30,
     restDelta: 0.001,
   });
+
+  const scrollTo = useCallback(
+    (target: string | number | HTMLElement, offset = -NAV_OFFSET) => {
+      const lenis = lenisRef.current;
+
+      if (lenis) {
+        lenis.scrollTo(target as any, {
+          offset,
+          duration: 1.1,
+          easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+        });
+        return;
+      }
+
+      // Fallback native
+      if (typeof target === "number") {
+        window.scrollTo({ top: target, behavior: "smooth" });
+        return;
+      }
+
+      const el =
+        typeof target === "string"
+          ? (document.querySelector(target) as HTMLElement | null)
+          : (target as HTMLElement);
+
+      if (!el) return;
+
+      const top = el.getBoundingClientRect().top + window.scrollY + offset;
+      window.scrollTo({ top, behavior: "smooth" });
+    },
+    []
+  );
 
   // --- TYPEWRITER LOGIC ---
   useEffect(() => {
@@ -262,49 +294,48 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, [displayText, isDeleting, loopNum, typingSpeed]);
 
+  // Lenis init
   useEffect(() => {
     const lenis = new Lenis({
-      duration: 1.2,
+      duration: 1.15,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       gestureOrientation: "vertical",
       smoothWheel: true,
       wheelMultiplier: 1,
+      touchMultiplier: 1,
     });
-    setLenisInstance(lenis);
 
-    function raf(time: number) {
+    lenisRef.current = lenis;
+
+    let rafId = 0;
+    const raf = (time: number) => {
       lenis.raf(time);
-      requestAnimationFrame(raf);
-    }
-    requestAnimationFrame(raf);
-
-    document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
-      anchor.addEventListener("click", function (e) {
-        e.preventDefault();
-        const href = anchor.getAttribute("href");
-        if (href) {
-          const target = document.querySelector(href);
-          if (target) lenis.scrollTo(target as HTMLElement);
-        }
-      });
-    });
+      rafId = requestAnimationFrame(raf);
+    };
+    rafId = requestAnimationFrame(raf);
 
     return () => {
+      cancelAnimationFrame(rafId);
       lenis.destroy();
+      lenisRef.current = null;
     };
   }, []);
 
+  // Stop page scroll + stop lenis when modal open
   useEffect(() => {
-    if (lenisInstance) {
-      if (showCV) {
-        lenisInstance.stop();
-        document.body.style.overflow = "hidden";
-      } else {
-        lenisInstance.start();
-        document.body.style.overflow = "";
-      }
+    const lenis = lenisRef.current;
+    if (showCV) {
+      lenis?.stop();
+      document.body.style.overflow = "hidden";
+    } else {
+      lenis?.start();
+      document.body.style.overflow = "";
     }
-  }, [showCV, lenisInstance]);
+
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [showCV]);
 
   const visibleProjects = showAllProjects ? projects : projects.slice(0, 4);
   const visibleCerts = showAllCerts
@@ -312,10 +343,13 @@ export default function Home() {
     : certifications.slice(0, 3);
 
   return (
-    <main className="min-h-screen relative overflow-hidden font-outfit selection:bg-cyan-500 selection:text-black">
+    <main
+      id="top"
+      className="min-h-screen relative overflow-hidden font-outfit selection:bg-cyan-500 selection:text-black"
+    >
       {/* Scroll Progress Bar */}
       <motion.div
-        className="fixed top-0 left-0 right-0 h-1 bg-linear-to-r from-purple-500 via-cyan-500 to-blue-500 origin-left z-100"
+        className="fixed top-0 left-0 right-0 h-1 bg-linear-to-r from-purple-500 via-cyan-500 to-blue-500 origin-left z-50"
         style={{ scaleX }}
       />
 
@@ -332,34 +366,40 @@ export default function Home() {
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             className="text-xl font-bold font-space tracking-tighter text-transparent bg-clip-text bg-linear-to-r from-purple-400 to-cyan-400 cursor-pointer"
-            onClick={() => window.scrollTo(0, 0)}
+            onClick={() => scrollTo(0, 0)}
           >
             0x5zen
           </motion.h1>
+
           <div className="flex gap-6 text-sm font-medium items-center">
-            {["Work", "About"].map((item, i) => (
-              <motion.a
-                key={item}
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 }}
-                href={`#${
-                  item.toLowerCase() === "work"
-                    ? "projects"
-                    : item.toLowerCase()
-                }`}
-                className="text-slate-400 hover:text-white transition-colors cursor-pointer relative group"
-              >
-                {item}
-                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-cyan-400 transition-all group-hover:w-full"></span>
-              </motion.a>
-            ))}
+            {["Work", "About"].map((item, i) => {
+              const id = item.toLowerCase() === "work" ? "#projects" : "#about";
+              return (
+                <motion.a
+                  key={item}
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  href={id}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    scrollTo(id);
+                  }}
+                  className="text-slate-400 hover:text-white transition-colors cursor-pointer relative group"
+                >
+                  {item}
+                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-cyan-400 transition-all group-hover:w-full" />
+                </motion.a>
+              );
+            })}
+
             <motion.a
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               whileHover={{ scale: 1.05 }}
               href="https://0x5zen-gallery.vercel.app/"
               target="_blank"
+              rel="noopener noreferrer"
               className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 border border-white/10 transition-all text-white flex items-center gap-2 cursor-pointer"
             >
               Gallery <FaArrowRight className="text-xs" />
@@ -393,9 +433,11 @@ export default function Home() {
 
           <p className="text-slate-400 text-lg md:text-xl max-w-2xl leading-relaxed mb-8">
             Computer Science Student at{" "}
-            <span className="text-white font-semibold">BSI</span>. Blending
-            high-performance code with immersive 3D visuals. Specializing in{" "}
-            <span className="text-cyan-400">Web3</span>,{" "}
+            <span className="text-white font-semibold">
+              Universitas Bina Sarana Informatika
+            </span>
+            . Blending high-performance code with immersive 3D visuals.
+            Specializing in <span className="text-cyan-400">Web3</span>,{" "}
             <span className="text-purple-400">Game Dev</span>, and{" "}
             <span className="text-pink-400">Fullstack Systems</span>.
           </p>
@@ -403,15 +445,21 @@ export default function Home() {
           <div className="flex gap-4">
             <motion.a
               href="#projects"
+              onClick={(e) => {
+                e.preventDefault();
+                scrollTo("#projects");
+              }}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               className="px-8 py-3 bg-white text-black font-bold rounded-full hover:bg-slate-200 transition-all font-space cursor-pointer"
             >
               Explore Work
             </motion.a>
+
             <motion.a
               href="https://0x5zen.vercel.app/"
               target="_blank"
+              rel="noopener noreferrer"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               className="px-8 py-3 border border-white/20 text-white font-bold rounded-full hover:bg-white/10 hover:border-white/40 transition-all font-space backdrop-blur-sm flex items-center gap-2 cursor-pointer"
@@ -576,6 +624,7 @@ export default function Home() {
                 <motion.a
                   href={project.link}
                   target="_blank"
+                  rel="noopener noreferrer"
                   key={project.title}
                   layout
                   initial={{ opacity: 0, scale: 0.9 }}
@@ -675,29 +724,33 @@ export default function Home() {
               Crafting digital reality through code and polygons. Open for
               collaboration on Web3, Frontend, and 3D projects.
             </p>
+
             <div className="flex gap-4">
               <a
                 href="https://github.com/meryzennn"
                 target="_blank"
+                rel="noopener noreferrer"
                 className="p-2 rounded-lg bg-white/5 hover:bg-white/10 hover:text-white transition-colors text-slate-400"
               >
                 <SiGithub size={20} />
               </a>
+
+              {/* X dropdown (multi akun) */}
+              <SocialXMenu />
+
               <a
-                href="https://twitter.com/ryzen"
+                href="https://discord.gg/ubbcWbkVB8"
                 target="_blank"
-                className="p-2 rounded-lg bg-white/5 hover:bg-white/10 hover:text-cyan-400 transition-colors text-slate-400"
-              >
-                <SiX size={20} />
-              </a>
-              <a
-                href="#"
-                className="p-2 rounded-lg bg-white/5 hover:bg-white/10 hover:text-purple-400 transition-colors text-slate-400"
+                rel="noopener noreferrer"
+                className="p-2 rounded-lg bg-white/5 hover:bg-white/10 hover:text-white transition-colors text-slate-400"
               >
                 <SiDiscord size={20} />
               </a>
+
               <a
-                href="#"
+                href="https://instagram.com/me.ryzen"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="p-2 rounded-lg bg-white/5 hover:bg-white/10 hover:text-pink-400 transition-colors text-slate-400"
               >
                 <SiInstagram size={20} />
@@ -710,7 +763,11 @@ export default function Home() {
             <ul className="space-y-2 text-sm text-slate-400">
               <li>
                 <a
-                  href="#"
+                  href="#top"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    scrollTo(0, 0);
+                  }}
                   className="hover:text-cyan-400 transition-colors cursor-pointer"
                 >
                   Home
@@ -719,6 +776,10 @@ export default function Home() {
               <li>
                 <a
                   href="#projects"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    scrollTo("#projects");
+                  }}
                   className="hover:text-cyan-400 transition-colors cursor-pointer"
                 >
                   Projects
@@ -728,6 +789,7 @@ export default function Home() {
                 <a
                   href="https://0x5zen-gallery.vercel.app/"
                   target="_blank"
+                  rel="noopener noreferrer"
                   className="hover:text-cyan-400 transition-colors cursor-pointer"
                 >
                   Gallery
@@ -744,12 +806,14 @@ export default function Home() {
             <a
               href="https://0x5zen.vercel.app/"
               target="_blank"
+              rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-linear-to-r from-purple-600 to-blue-600 text-white font-bold text-sm hover:opacity-90 transition-opacity"
             >
               Social Hub <FaArrowRight />
             </a>
           </div>
         </div>
+
         <div className="border-t border-white/5 py-8 text-center text-slate-600 text-sm font-mono">
           <p>&copy;2026 0x5zen. All rights reserved.</p>
         </div>
@@ -769,183 +833,193 @@ export default function Home() {
             }}
           >
             <motion.div
-              data-lenis-prevent
               initial={{ scale: 0.95, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              className="bg-slate-950 w-full max-w-4xl max-h-[85vh] rounded-3xl border border-white/10 shadow-2xl overflow-y-auto relative custom-scrollbar"
+              className="bg-slate-950 w-full max-w-4xl rounded-3xl border border-white/10 shadow-2xl overflow-hidden"
             >
-              <div className="bg-slate-900/90 p-8 border-b border-white/5 flex flex-col md:flex-row gap-6 items-center md:items-start sticky top-0 z-10 backdrop-blur-xl">
-                <button
-                  onClick={() => setShowCV(false)}
-                  className="absolute top-4 right-4 p-2 bg-white/5 rounded-full hover:bg-white/20 transition-colors"
-                >
-                  <FaTimes />
-                </button>
+              <div
+                data-lenis-prevent
+                className="max-h-[85vh] overflow-y-auto relative custom-scrollbar"
+              >
+                <div className="bg-slate-950 p-8 border-b border-white/10 flex flex-col md:flex-row gap-6 items-center md:items-start sticky top-0 z-10">
+                  <button
+                    onClick={() => setShowCV(false)}
+                    className="absolute top-4 right-4 p-2 bg-white/5 rounded-full hover:bg-white/20 transition-colors"
+                    aria-label="Close"
+                  >
+                    <FaTimes />
+                  </button>
 
-                <img
-                  src="/profile.jpg"
-                  alt="Tegar Hardiansyah Prasetyo"
-                  className="w-24 h-24 rounded-full object-cover border-4 border-slate-800 shadow-xl shrink-0"
-                />
+                  <img
+                    src="/profile.jpg"
+                    alt="Tegar Hardiansyah Prasetyo"
+                    className="w-24 h-24 rounded-full object-cover border-4 border-slate-800 shadow-xl shrink-0"
+                  />
 
-                <div className="text-center md:text-left w-full">
-                  <h2 className="text-3xl font-extrabold font-space text-white">
-                    Tegar Hardiansyah Prasetyo
-                  </h2>
-                  <p className="text-cyan-400 font-mono mb-2 font-bold">
-                    Full-Stack Web Developer | 3D Artist
-                  </p>
-                  <div className="flex flex-wrap gap-4 text-sm text-slate-300 justify-center md:justify-start font-medium">
-                    <span className="flex items-center gap-2">
-                      <FaMapMarkerAlt /> Bogor, Indonesia
-                    </span>
-                    <span className="flex items-center gap-2">
-                      <FaEnvelope /> me.ryzennn@gmail.com
-                    </span>
-                    <span className="flex items-center gap-2">
-                      <FaPhone /> +62 882-9937-4314
-                    </span>
+                  <div className="text-center md:text-left w-full">
+                    <h2 className="text-3xl font-extrabold font-space text-white">
+                      Tegar Hardiansyah Prasetyo
+                    </h2>
+                    <p className="text-cyan-400 font-mono mb-2 font-bold">
+                      Full-Stack Web Developer | 3D Artist
+                    </p>
+                    <div className="flex flex-wrap gap-4 text-sm text-slate-300 justify-center md:justify-start font-medium">
+                      <span className="flex items-center gap-2">
+                        <FaMapMarkerAlt /> Bogor, Indonesia
+                      </span>
+                      <span className="flex items-center gap-2">
+                        <FaEnvelope /> me.ryzennn@gmail.com
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="p-8 space-y-8">
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 }}
-                >
-                  <h3 className="text-xl font-bold text-white mb-3 border-b border-white/10 pb-2 flex items-center gap-2">
-                    <FaUserAstronaut className="text-purple-400" /> Professional
-                    Summary
-                  </h3>
-                  <p className="text-slate-400 leading-relaxed text-sm text-justify">
-                    Web Developer and 3D Artist with over 3 years of experience.
-                    Expert in PHP (CodeIgniter 4), JavaScript (Next.js), and
-                    Python for Fullstack systems. Skilled in server management
-                    (Linux/Docker) and creating digital art on the Solana
-                    blockchain.
-                  </p>
-                </motion.div>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
-                >
-                  <h3 className="text-xl font-bold text-white mb-4 border-b border-white/10 pb-2 flex items-center gap-2">
-                    <FaBriefcase className="text-cyan-400" /> Experience
-                  </h3>
-
-                  <div className="mb-6 relative pl-6 border-l border-white/10">
-                    <div className="absolute -left-[5px] top-1 w-2.5 h-2.5 rounded-full bg-cyan-500"></div>
-                    <div className="flex justify-between items-baseline mb-1">
-                      <h4 className="font-bold text-white text-lg">
-                        Kementerian Kelautan dan Perikanan RI
-                      </h4>
-                      <span className="text-xs font-mono text-slate-500">
-                        Sep 2025 - Dec 2025
-                      </span>
-                    </div>
-                    <p className="text-cyan-400 text-sm mb-2 font-medium">
-                      Web Developer Intern
-                    </p>
-                    <ul className="list-disc list-inside text-sm text-slate-400 space-y-1">
-                      <li>
-                        Developed web applications for internal ministry use.
-                      </li>
-                      <li>
-                        Collaborated with senior developers on system
-                        maintenance.
-                      </li>
-                    </ul>
-                  </div>
-
-                  <div className="relative pl-6 border-l border-white/10">
-                    <div className="absolute -left-[5px] top-1 w-2.5 h-2.5 rounded-full bg-purple-500"></div>
-                    <div className="flex justify-between items-baseline mb-1">
-                      <h4 className="font-bold text-white text-lg">
-                        Freelance (Fiverr & Self-Employed)
-                      </h4>
-                      <span className="text-xs font-mono text-slate-500">
-                        2023 - Present
-                      </span>
-                    </div>
-                    <p className="text-cyan-400 text-sm mb-2 font-medium">
-                      Fullstack Developer & 3D Artist
-                    </p>
-                    <ul className="list-disc list-inside text-sm text-slate-400 space-y-1">
-                      <li>Built "ZenPnL" finance dashboard using Next.js.</li>
-                      <li>Created NFT collections on Solana ecosystem.</li>
-                    </ul>
-                  </div>
-                </motion.div>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
-                >
-                  <h3 className="text-xl font-bold text-white mb-4 border-b border-white/10 pb-2 flex items-center gap-2">
-                    <FaCertificate className="text-yellow-400" /> Certifications
-                  </h3>
-                  <div className="grid md:grid-cols-2 gap-3">
-                    {visibleCerts.map((cert, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors"
-                      >
-                        <div className="mt-1 shrink-0 text-xl">{cert.icon}</div>
-                        <div>
-                          <h5 className="font-bold text-sm text-white">
-                            {cert.name}
-                          </h5>
-                          <p className="text-xs text-slate-500">
-                            {cert.issuer} • {cert.year}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <button
-                    onClick={() => setShowAllCerts(!showAllCerts)}
-                    className="mt-4 text-xs text-cyan-400 hover:text-white flex items-center gap-1 cursor-pointer font-bold"
+                <div className="p-8 space-y-8">
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
                   >
-                    {showAllCerts ? "Show Less" : "Show All Certifications"}{" "}
-                    <FaChevronDown
-                      className={`transition-transform ${
-                        showAllCerts ? "rotate-180" : ""
-                      }`}
-                    />
-                  </button>
-                </motion.div>
+                    <h3 className="text-xl font-bold text-white mb-3 border-b border-white/10 pb-2 flex items-center gap-2">
+                      <FaUserAstronaut className="text-purple-400" />{" "}
+                      Professional Summary
+                    </h3>
+                    <p className="text-slate-400 leading-relaxed text-sm text-justify">
+                      Web Developer and 3D Artist with over 3 years of
+                      experience. Expert in PHP (CodeIgniter 4), JavaScript
+                      (Next.js), and Python for Fullstack systems. Skilled in
+                      server management (Linux/Docker) and creating digital art
+                      on the Solana blockchain.
+                    </p>
+                  </motion.div>
 
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4 }}
-                >
-                  <h3 className="text-xl font-bold text-white mb-4 border-b border-white/10 pb-2 flex items-center gap-2">
-                    <FaGraduationCap className="text-pink-400" /> Education
-                  </h3>
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div className="p-4 rounded-xl bg-white/5">
-                      <h4 className="font-bold text-white">UBSI</h4>
-                      <p className="text-sm text-slate-400">
-                        Bachelor's in Computer Science (2022 - 2026)
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                  >
+                    <h3 className="text-xl font-bold text-white mb-4 border-b border-white/10 pb-2 flex items-center gap-2">
+                      <FaBriefcase className="text-cyan-400" /> Experience
+                    </h3>
+
+                    <div className="mb-6 relative pl-6 border-l border-white/10">
+                      <div className="absolute -left-[5px] top-1 w-2.5 h-2.5 rounded-full bg-cyan-500" />
+                      <div className="flex justify-between items-baseline mb-1">
+                        <h4 className="font-bold text-white text-lg">
+                          Kementerian Kelautan dan Perikanan RI
+                        </h4>
+                        <span className="text-xs font-mono text-slate-500">
+                          Sep 2025 - Dec 2025
+                        </span>
+                      </div>
+                      <p className="text-cyan-400 text-sm mb-2 font-medium">
+                        Web Developer Intern
                       </p>
+                      <ul className="list-disc list-inside text-sm text-slate-400 space-y-1">
+                        <li>
+                          Developed web applications for internal ministry use.
+                        </li>
+                        <li>
+                          Collaborated with senior developers on system
+                          maintenance.
+                        </li>
+                      </ul>
                     </div>
-                    <div className="p-4 rounded-xl bg-white/5">
-                      <h4 className="font-bold text-white">
-                        SMK PGRI 2 CIBINONG
-                      </h4>
-                      <p className="text-sm text-slate-400">
-                        Network Engineering (2019 - 2022)
+
+                    <div className="relative pl-6 border-l border-white/10">
+                      <div className="absolute -left-[5px] top-1 w-2.5 h-2.5 rounded-full bg-purple-500" />
+                      <div className="flex justify-between items-baseline mb-1">
+                        <h4 className="font-bold text-white text-lg">
+                          Freelance
+                        </h4>
+                        <span className="text-xs font-mono text-slate-500">
+                          2023 - Present
+                        </span>
+                      </div>
+                      <p className="text-cyan-400 text-sm mb-2 font-medium">
+                        Fullstack Developer & 3D Artist
                       </p>
+                      <ul className="list-disc list-inside text-sm text-slate-400 space-y-1">
+                        <li>Built "ZenPnL" finance dashboard using Next.js.</li>
+                        <li>Created NFT collections on Solana ecosystem.</li>
+                        <li>
+                          Released and sold NFT collections across Paras.id
+                          (NEAR ecosystem) and Tezos, handling the full pipeline
+                          from artwork creation to listing and promotion.
+                        </li>
+                      </ul>
                     </div>
-                  </div>
-                </motion.div>
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                  >
+                    <h3 className="text-xl font-bold text-white mb-4 border-b border-white/10 pb-2 flex items-center gap-2">
+                      <FaCertificate className="text-yellow-400" />{" "}
+                      Certifications
+                    </h3>
+                    <div className="grid md:grid-cols-2 gap-3">
+                      {visibleCerts.map((cert, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors"
+                        >
+                          <div className="mt-1 shrink-0 text-xl">
+                            {cert.icon}
+                          </div>
+                          <div>
+                            <h5 className="font-bold text-sm text-white">
+                              {cert.name}
+                            </h5>
+                            <p className="text-xs text-slate-500">
+                              {cert.issuer} • {cert.year}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => setShowAllCerts(!showAllCerts)}
+                      className="mt-4 text-xs text-cyan-400 hover:text-white flex items-center gap-1 cursor-pointer font-bold"
+                    >
+                      {showAllCerts ? "Show Less" : "Show All Certifications"}{" "}
+                      <FaChevronDown
+                        className={`transition-transform ${
+                          showAllCerts ? "rotate-180" : ""
+                        }`}
+                      />
+                    </button>
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.4 }}
+                  >
+                    <h3 className="text-xl font-bold text-white mb-4 border-b border-white/10 pb-2 flex items-center gap-2">
+                      <FaGraduationCap className="text-pink-400" /> Education
+                    </h3>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="p-4 rounded-xl bg-white/5">
+                        <h4 className="font-bold text-white">UBSI</h4>
+                        <p className="text-sm text-slate-400">
+                          Bachelor's in Computer Science (2022 - 2026)
+                        </p>
+                      </div>
+                      <div className="p-4 rounded-xl bg-white/5">
+                        <h4 className="font-bold text-white">
+                          SMK PGRI 2 CIBINONG
+                        </h4>
+                        <p className="text-sm text-slate-400">
+                          Network Engineering (2019 - 2022)
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                </div>
               </div>
             </motion.div>
           </motion.div>
