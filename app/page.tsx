@@ -1,7 +1,8 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
+import Lenis from "lenis"; // Import Library Scroll Mahal
 import {
   SiNextdotjs,
   SiReact,
@@ -30,11 +31,13 @@ import {
   FaExternalLinkAlt,
   FaArrowRight,
   FaLink,
+  FaChevronDown,
+  FaChevronUp,
 } from "react-icons/fa";
 
 // --- DATA: SKILLS ---
 const skills = [
-  { name: "JavaScript", icon: <SiNextdotjs />, color: "hover:text-yellow-400" }, // Icon placeholder adjustment
+  { name: "JavaScript", icon: <SiNextdotjs />, color: "hover:text-yellow-400" },
   { name: "TypeScript", icon: <SiTypescript />, color: "hover:text-blue-500" },
   { name: "React", icon: <SiReact />, color: "hover:text-cyan-400" },
   { name: "Next.js", icon: <SiNextdotjs />, color: "hover:text-white" },
@@ -56,39 +59,67 @@ const skills = [
   { name: "Linux", icon: <SiLinux />, color: "hover:text-yellow-200" },
 ];
 
-// --- DATA: PROJECTS (Ada Linknya) ---
+// --- DATA: PROJECTS ---
 const projects = [
   {
     title: "ZenPnL Calculator",
     desc: "A high-precision financial tracking dashboard for stock traders. Real-time P&L visualization.",
     tags: ["Next.js", "TypeScript", "Finance"],
     color: "from-green-500 to-emerald-700",
-    link: "https://zenpnl.vercel.app", // Ganti link asli
+    link: "https://zenpnl.vercel.app",
   },
   {
     title: "PureZen Slides",
     desc: "A minimalist, code-first presentation framework. Focusing on developer-centric UI.",
     tags: ["React", "Tailwind", "Productivity"],
     color: "from-blue-500 to-indigo-700",
-    link: "https://purezen.vercel.app", // Ganti link asli
+    link: "https://purezen.vercel.app",
   },
   {
     title: "JKN Sentinel AI",
     desc: "Sentiment analysis engine for mobile app reviews using SVM and Naive Bayes.",
     tags: ["Python", "ML", "AI"],
     color: "from-purple-500 to-pink-700",
-    link: "https://github.com/meryzennn/jkn-sentinel", // Ganti link asli
+    link: "https://github.com/meryzennn/jkn-sentinel",
   },
   {
     title: "Solana Drip Ledger",
     desc: "Decentralized asset dashboard for the DRiP ecosystem. Integrated with Phantom Wallet.",
     tags: ["Web3", "Solidity", "Blockchain"],
     color: "from-orange-500 to-red-700",
-    link: "https://drip-ledger.sol", // Ganti link asli
+    link: "https://drip-ledger.sol",
+  },
+  {
+    title: "Voxel Verse NFT",
+    desc: "Generative 3D Voxel art collection on Solana. Generated using Python scripts in Blender.",
+    tags: ["Blender", "Python", "NFT"],
+    color: "from-yellow-500 to-orange-700",
+    link: "#",
+  },
+  {
+    title: "EtherGuard Audit",
+    desc: "Smart contract security scanner tool. Detects common vulnerabilities in Solidity code.",
+    tags: ["Rust", "Solidity", "Security"],
+    color: "from-slate-500 to-slate-800",
+    link: "#",
+  },
+  {
+    title: "Ryzen OS Theme",
+    desc: "Custom Linux Rice (Hyprland) configuration with neon aesthetics and productivity scripts.",
+    tags: ["Linux", "Bash", "Ricing"],
+    color: "from-pink-500 to-rose-700",
+    link: "#",
+  },
+  {
+    title: "DevOps Dashboard",
+    desc: "Server monitoring tool for home labs using Docker and Grafana visualization.",
+    tags: ["Docker", "Grafana", "System"],
+    color: "from-cyan-500 to-blue-800",
+    link: "#",
   },
 ];
 
-// --- DATA: 3D ARTWORKS (Ada Linknya) ---
+// --- DATA: ARTWORKS ---
 const artworks = [
   {
     title: "Cyberpunk Ruins",
@@ -116,17 +147,93 @@ const aliases = ["Tegar Hardiansyah", "Ryzen", "0x5zen", "Zen"];
 
 export default function Home() {
   const [textIndex, setTextIndex] = useState(0);
+  const [showAllProjects, setShowAllProjects] = useState(false);
 
+  // STATE: LOADING BUATAN (Biar Shimmer Muncul)
+  const [isLoading, setIsLoading] = useState(true);
+
+  // EFFECT 1: SETUP LENIS SCROLL (Scroll Licin)
   useEffect(() => {
-    // Smooth scrolling untuk html tag
-    document.documentElement.style.scrollBehavior = "smooth";
+    const lenis = new Lenis({
+      duration: 1.2,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)), // Easing function ala iOS
+      gestureOrientation: "vertical",
+      smoothWheel: true,
+    });
 
+    function raf(time: number) {
+      lenis.raf(time);
+      requestAnimationFrame(raf);
+    }
+    requestAnimationFrame(raf);
+
+    // Ganti nama otomatis
     const interval = setInterval(() => {
       setTextIndex((prev) => (prev + 1) % aliases.length);
     }, 2500);
-    return () => clearInterval(interval);
+
+    // Timeout buat matikan Loading Shimmer setelah 2.5 detik
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 2500);
+
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timer);
+      lenis.destroy();
+    };
   }, []);
 
+  const visibleProjects = showAllProjects ? projects : projects.slice(0, 4);
+
+  // --- TAMPILAN LOADING (SHIMMER) ---
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col justify-center max-w-6xl mx-auto px-6 relative overflow-hidden font-[family-name:var(--font-outfit)]">
+        {/* Background Ambience */}
+        <div className="fixed inset-0 overflow-hidden -z-10 pointer-events-none">
+          <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-[120px]" />
+        </div>
+
+        {/* SKELETON UI */}
+        <div className="w-full space-y-8 animate-pulse">
+          {/* Tag */}
+          <div className="h-6 w-32 rounded shimmer-wrapper border border-white/5 bg-white/5"></div>
+
+          {/* Headline */}
+          <div className="space-y-4">
+            <div className="h-16 md:h-24 w-3/4 rounded-2xl shimmer-wrapper bg-white/5"></div>
+            <div className="h-16 md:h-24 w-1/2 rounded-2xl shimmer-wrapper bg-white/5"></div>
+          </div>
+
+          {/* Paragraph */}
+          <div className="space-y-3 max-w-2xl py-4">
+            <div className="h-4 w-full rounded shimmer-wrapper bg-white/5"></div>
+            <div className="h-4 w-5/6 rounded shimmer-wrapper bg-white/5"></div>
+          </div>
+
+          {/* Buttons */}
+          <div className="flex gap-4 pt-4">
+            <div className="h-12 w-40 rounded-full shimmer-wrapper bg-white/5"></div>
+            <div className="h-12 w-40 rounded-full shimmer-wrapper border border-white/5 bg-transparent"></div>
+          </div>
+
+          {/* Tech Stack Preview */}
+          <div className="pt-12">
+            <div className="h-8 w-48 mb-6 shimmer-wrapper rounded bg-white/5"></div>
+            <div className="flex gap-4">
+              <div className="h-16 w-16 rounded-xl shimmer-wrapper bg-white/5"></div>
+              <div className="h-16 w-16 rounded-xl shimmer-wrapper bg-white/5"></div>
+              <div className="h-16 w-16 rounded-xl shimmer-wrapper bg-white/5"></div>
+              <div className="h-16 w-16 rounded-xl shimmer-wrapper bg-white/5"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // --- TAMPILAN UTAMA (SETELAH LOADING) ---
   return (
     <main className="min-h-screen relative overflow-hidden font-[family-name:var(--font-outfit)] selection:bg-cyan-500 selection:text-black">
       {/* Background Ambience */}
@@ -250,7 +357,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* WEB PROJECTS SECTION */}
+      {/* WEB PROJECTS SECTION (EXPANDABLE) */}
       <section id="projects" className="py-20 bg-slate-950/30">
         <div className="max-w-6xl mx-auto px-6">
           <motion.div
@@ -268,64 +375,70 @@ export default function Home() {
             </div>
           </motion.div>
 
+          {/* Grid Projects */}
           <div className="grid md:grid-cols-2 gap-8 mb-12">
-            {projects.map((project, index) => (
-              <a
-                href={project.link}
-                target="_blank"
-                key={index}
-                className="block"
-              >
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  viewport={{ once: true }}
-                  className="group h-full p-8 rounded-3xl bg-slate-900 border border-white/5 hover:border-cyan-500/50 hover:bg-slate-900/80 transition-all relative overflow-hidden cursor-pointer"
+            <AnimatePresence>
+              {visibleProjects.map((project, index) => (
+                <motion.a
+                  href={project.link}
+                  target="_blank"
+                  key={index}
+                  layout
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ duration: 0.3 }}
+                  className="block h-full"
                 >
-                  {/* Glow Effect */}
-                  <div
-                    className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${project.color} blur-[80px] opacity-20 group-hover:opacity-40 transition-opacity`}
-                  />
+                  <div className="group h-full p-8 rounded-3xl bg-slate-900 border border-white/5 hover:border-cyan-500/50 hover:bg-slate-900/80 transition-all relative overflow-hidden cursor-pointer flex flex-col">
+                    <div
+                      className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${project.color} blur-[80px] opacity-20 group-hover:opacity-40 transition-opacity`}
+                    />
 
-                  <div className="flex justify-between items-start mb-4">
-                    <h3 className="text-2xl font-bold font-[family-name:var(--font-space)] group-hover:text-cyan-400 transition-colors">
-                      {project.title}
-                    </h3>
-                    <FaExternalLinkAlt className="text-slate-500 group-hover:text-white transition-colors" />
-                  </div>
+                    <div className="flex justify-between items-start mb-4">
+                      <h3 className="text-2xl font-bold font-[family-name:var(--font-space)] group-hover:text-cyan-400 transition-colors">
+                        {project.title}
+                      </h3>
+                      <FaExternalLinkAlt className="text-slate-500 group-hover:text-white transition-colors" />
+                    </div>
 
-                  <p className="text-slate-400 leading-relaxed mb-6 text-sm">
-                    {project.desc}
-                  </p>
-                  <div className="flex flex-wrap gap-2 mt-auto">
-                    {project.tags.map((tag, i) => (
-                      <span
-                        key={i}
-                        className="text-xs font-mono px-3 py-1 rounded-full bg-white/5 text-slate-300 border border-white/5"
-                      >
-                        {tag}
-                      </span>
-                    ))}
+                    <p className="text-slate-400 leading-relaxed mb-6 text-sm flex-grow">
+                      {project.desc}
+                    </p>
+                    <div className="flex flex-wrap gap-2 mt-auto">
+                      {project.tags.map((tag, i) => (
+                        <span
+                          key={i}
+                          className="text-xs font-mono px-3 py-1 rounded-full bg-white/5 text-slate-300 border border-white/5"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                </motion.div>
-              </a>
-            ))}
+                </motion.a>
+              ))}
+            </AnimatePresence>
           </div>
 
-          {/* View All Button */}
-          <div className="flex justify-center">
-            <a
-              href="https://github.com/meryzennn?tab=repositories"
-              target="_blank"
-              className="group flex items-center gap-3 px-8 py-3 rounded-full bg-slate-900 border border-white/10 hover:border-cyan-500/50 hover:bg-slate-800 transition-all"
-            >
-              <span className="font-[family-name:var(--font-space)] font-bold">
-                View All Archive
-              </span>
-              <FaArrowRight className="group-hover:translate-x-1 transition-transform text-cyan-400" />
-            </a>
-          </div>
+          {/* Load More Button */}
+          {projects.length > 4 && (
+            <div className="flex justify-center">
+              <button
+                onClick={() => setShowAllProjects(!showAllProjects)}
+                className="group flex items-center gap-3 px-8 py-3 rounded-full bg-slate-900 border border-white/10 hover:border-cyan-500/50 hover:bg-slate-800 transition-all cursor-pointer"
+              >
+                <span className="font-[family-name:var(--font-space)] font-bold">
+                  {showAllProjects ? "Show Less" : "View All Projects"}
+                </span>
+                {showAllProjects ? (
+                  <FaChevronUp className="text-cyan-400 group-hover:-translate-y-1 transition-transform" />
+                ) : (
+                  <FaChevronDown className="text-cyan-400 group-hover:translate-y-1 transition-transform" />
+                )}
+              </button>
+            </div>
+          )}
         </div>
       </section>
 
@@ -355,12 +468,9 @@ export default function Home() {
               viewport={{ once: true }}
               className="relative group aspect-[4/5] rounded-2xl overflow-hidden cursor-pointer block border border-white/5 hover:border-pink-500/50 transition-colors"
             >
-              {/* Placeholder untuk Gambar */}
               <div
                 className={`w-full h-full ${art.style} group-hover:scale-110 transition-transform duration-700 ease-out`}
               />
-
-              {/* Overlay Info */}
               <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-6">
                 <div className="translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
                   <h3 className="text-xl font-bold font-[family-name:var(--font-space)]">
@@ -382,7 +492,6 @@ export default function Home() {
       {/* SUPER FOOTER */}
       <footer className="relative mt-20 border-t border-white/10 bg-slate-950/50 backdrop-blur-xl">
         <div className="max-w-6xl mx-auto px-6 py-16 grid md:grid-cols-4 gap-12">
-          {/* Brand Column */}
           <div className="md:col-span-2">
             <h2 className="text-3xl font-bold font-[family-name:var(--font-space)] text-white mb-4">
               0x5zen
@@ -420,8 +529,6 @@ export default function Home() {
               </a>
             </div>
           </div>
-
-          {/* Quick Links */}
           <div>
             <h3 className="font-bold font-[family-name:var(--font-space)] text-white mb-4">
               Explore
@@ -458,8 +565,6 @@ export default function Home() {
               </li>
             </ul>
           </div>
-
-          {/* Social Hub Link */}
           <div>
             <h3 className="font-bold font-[family-name:var(--font-space)] text-white mb-4">
               Connect
@@ -476,7 +581,6 @@ export default function Home() {
             </a>
           </div>
         </div>
-
         <div className="border-t border-white/5 py-8 text-center text-slate-600 text-sm font-mono">
           <p>
             &copy; {new Date().getFullYear()} Tegar Hardiansyah (Ryzen). All
